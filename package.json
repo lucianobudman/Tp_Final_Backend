@@ -1,0 +1,27 @@
+{
+  "name": "gestion-peritos-informaticos",
+  "version": "1.0.0",
+  "description": "API para la gestión de peritos informáticos",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20.17"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "morgan": "^1.10.0",
+    "pg": "^8.13.1",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.5",
+    "sqlite3": "^6.0.1"
+  },
+  "devDependencies": {
+    "supertest": "^7.0.0"
+  }
+}
