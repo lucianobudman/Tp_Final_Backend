@@ -14,10 +14,20 @@ function createApp(models, env = process.env) {
       return next(error);
     }
 
-    if (error.status === 400 || error.status === 413) {
-      const message = error.status === 413 ? "El cuerpo de la solicitud es demasiado grande." : "El JSON de la solicitud no es válido.";
+    if (error.type === "entity.parse.failed" || error.type === "entity.too.large") {
+      const status = error.type === "entity.too.large" ? 413 : 400;
+      const message = status === 413 ? "El cuerpo de la solicitud es demasiado grande." : "El JSON de la solicitud no es válido.";
       console.warn(chalk.yellow(`Validación fallida [body]: ${message}`));
-      return res.status(error.status).json({ error: message, field: "body" });
+      return res.status(status).json({ error: message, field: "body" });
+    }
+
+    const status = error.statusCode || error.status;
+    if (error.expose && status >= 400 && status < 500) {
+      const response = { error: error.message };
+      if (error.field) {
+        response.field = error.field;
+      }
+      return res.status(status).json(response);
     }
 
     console.error(chalk.red(`Error crítico (500):\n${error.stack || error}`));

@@ -37,6 +37,20 @@ test("selects SQLite in development and PostgreSQL in production", async () => {
   await postgres.close();
 });
 
+test("enforces role foreign keys and keeps deleted peritos in the database", async () => {
+  await assert.rejects(
+    models.User.create({ username: "orphan", role_id: 999 }),
+    { name: "SequelizeForeignKeyConstraintError" }
+  );
+
+  const role = await models.Role.findOne({ where: { nombre_rol: "AUDITOR" } });
+  const user = await models.User.create({ username: "baja-logica", role_id: role.id });
+  await user.update({ active: false });
+
+  assert.equal(await models.User.count({ where: { id: user.id } }), 1);
+  assert.equal(await models.User.count({ where: { id: user.id, active: true } }), 0);
+});
+
 function authorized(method, path) {
   return request(app)[method](path).set("x-api-key", API_KEY);
 }

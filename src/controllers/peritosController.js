@@ -1,4 +1,5 @@
 const chalk = require("chalk");
+const createError = require("http-errors");
 const { UniqueConstraintError, ValidationError } = require("sequelize");
 
 function logValidation(field, message) {
@@ -20,19 +21,19 @@ function createPeritosController({ User, Role }) {
 
       if (!username) {
         logValidation("username", "el nombre de usuario no debe estar vacío.");
-        return res.status(400).json({ error: "username no debe estar vacío.", field: "username" });
+        return next(createError(400, "username no debe estar vacío.", { field: "username" }));
       }
 
       if (!Number.isInteger(roleId) || roleId <= 0) {
         logValidation("role_id", "debe ser un ID de rol válido.");
-        return res.status(400).json({ error: "role_id debe ser un ID de rol válido.", field: "role_id" });
+        return next(createError(400, "role_id debe ser un ID de rol válido.", { field: "role_id" }));
       }
 
       try {
         const role = await Role.findByPk(roleId);
         if (!role) {
           logValidation("role_id", `no existe el rol con ID ${roleId}.`);
-          return res.status(400).json({ error: "El rol indicado no existe.", field: "role_id" });
+          return next(createError(400, "El rol indicado no existe.", { field: "role_id" }));
         }
 
         const user = await User.create({ username, role_id: roleId });
@@ -42,11 +43,11 @@ function createPeritosController({ User, Role }) {
       } catch (error) {
         if (error instanceof UniqueConstraintError) {
           logValidation("username", "ya existe.");
-          return res.status(409).json({ error: "El username ya existe.", field: "username" });
+          return next(createError(409, "El username ya existe.", { field: "username" }));
         }
         if (error instanceof ValidationError) {
           logValidation("username", error.message);
-          return res.status(400).json({ error: error.message, field: "username" });
+          return next(createError(400, error.message, { field: "username" }));
         }
         return next(error);
       }
@@ -55,13 +56,13 @@ function createPeritosController({ User, Role }) {
     async remove(req, res, next) {
       const id = Number(req.params.id);
       if (!Number.isInteger(id) || id <= 0) {
-        return res.status(404).json({ error: "Perito no encontrado." });
+        return next(createError(404, "Perito no encontrado."));
       }
 
       try {
         const user = await User.findByPk(id);
         if (!user) {
-          return res.status(404).json({ error: "Perito no encontrado." });
+          return next(createError(404, "Perito no encontrado."));
         }
 
         await user.update({ active: false });
@@ -78,7 +79,7 @@ function createPeritosController({ User, Role }) {
           const role = await Role.findOne({ where: { nombre_rol: req.query.role } });
           if (!role) {
             logValidation("role", `no existe el rol "${req.query.role}".`);
-            return res.status(400).json({ error: "El rol indicado no existe.", field: "role" });
+            return next(createError(400, "El rol indicado no existe.", { field: "role" }));
           }
           include.where = { id: role.id };
           include.required = true;
@@ -98,7 +99,7 @@ function createPeritosController({ User, Role }) {
     async getById(req, res, next) {
       const id = Number(req.params.id);
       if (!Number.isInteger(id) || id <= 0) {
-        return res.status(404).json({ error: "Perito no encontrado." });
+        return next(createError(404, "Perito no encontrado."));
       }
 
       try {
@@ -107,7 +108,7 @@ function createPeritosController({ User, Role }) {
           include: [roleInclude]
         });
         if (!user) {
-          return res.status(404).json({ error: "Perito no encontrado." });
+          return next(createError(404, "Perito no encontrado."));
         }
         return res.status(200).json(user);
       } catch (error) {

@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
+    "db:seed": "node scripts/seedDatabase.js",
     "test": "node --test"
   },
   "engines": {
@@ -15,6 +16,7 @@
     "chalk": "^4.1.2",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "http-errors": "^2.0.1",
     "morgan": "^1.10.0",
     "pg": "^8.13.1",
     "pg-hstore": "^2.3.4",

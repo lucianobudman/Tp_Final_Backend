@@ -7,7 +7,7 @@ function createSequelize(env = process.env) {
   const dialect = env.DB_DIALECT || defaultDialect;
 
   if (dialect === "sqlite") {
-    const storage = env.DB_STORAGE || path.join(process.cwd(), "data", "peritos.sqlite");
+    const storage = env.DB_STORAGE || path.join(process.cwd(), "forensics.db");
     if (storage !== ":memory:") {
       fs.mkdirSync(path.dirname(path.resolve(storage)), { recursive: true });
     }

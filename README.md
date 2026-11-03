@@ -20,15 +20,27 @@ Copy-Item .env.example .env
 Configure `API_KEY` en `.env` con un valor secreto propio y luego ejecute:
 
 ```powershell
+npm run db:seed
 npm start
 ```
 
 El servidor crea las tablas que falten e inicializa los roles `ADMIN`,
 `FORENSIC_INSPECTOR` y `AUDITOR`. Por defecto, SQLite guarda la base en
-`data/peritos.sqlite`. Para producción, establezca `NODE_ENV=production` y
-configure `DATABASE_URL` (o `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` y
-`DB_NAME`). También puede seleccionar explícitamente el motor con
-`DB_DIALECT=sqlite` o `DB_DIALECT=postgres`.
+`forensics.db`. El comando `npm run db:seed` prepara ese archivo con los roles y
+tres usuarios de prueba requeridos para la entrega. También puede seleccionar
+explícitamente el motor con `DB_DIALECT=sqlite` o `DB_DIALECT=postgres`.
+
+Para ejecutar la aplicación con PostgreSQL en contenedores, configure en `.env`
+un `API_KEY` y un `DB_PASSWORD` propios, y ejecute:
+
+```powershell
+docker compose up --build
+```
+
+Compose inicia PostgreSQL y la API, y espera a que la base esté lista antes de
+arrancar el servidor. Para una instalación PostgreSQL externa, establezca
+`NODE_ENV=production` y configure `DATABASE_URL` (o `DB_HOST`, `DB_PORT`,
+`DB_USER`, `DB_PASSWORD` y `DB_NAME`).
 
 ## Autenticación y auditoría
 
@@ -49,14 +61,16 @@ peritos funciona tanto con SQLite como con PostgreSQL.
 | Archivo | Responsabilidad |
 | --- | --- |
 | `src/server.js` | Es el punto de entrada. Carga `.env`, comprueba que exista `API_KEY`, crea la conexión y los modelos, verifica la conexión con la base, crea las tablas que falten e inserta los roles requeridos si todavía no existen. Finalmente, inicia Express y cierra el servidor y Sequelize ordenadamente al recibir `SIGINT` o `SIGTERM`. |
-| `src/app.js` | Configura la aplicación Express. Morgan registra las solicitudes HTTP y monta las rutas de peritos en `/api/v1/peritos`. También concentra el manejo de errores: el JSON mal formado o demasiado grande se devuelve como `400` o `413`, respectivamente; los errores inesperados se registran en rojo con Chalk y responden `500`. |
+| `scripts/seedDatabase.js` | Genera de forma idempotente `forensics.db` con los tres roles y tres usuarios de prueba. |
+| `Dockerfile` y `docker-compose.yml` | Construyen y ejecutan la API junto con PostgreSQL, usando variables de entorno para las credenciales. |
+| `src/app.js` | Configura la aplicación Express. Morgan registra las solicitudes HTTP y monta las rutas de peritos en `/api/v1/peritos`. Centraliza los errores HTTP creados con `http-errors`; el JSON mal formado o demasiado grande se devuelve como `400` o `413`, respectivamente, y los errores inesperados se registran en rojo con Chalk y responden `500`. |
 | `src/config/database.js` | Crea la instancia de Sequelize según las variables de entorno. Usa SQLite por defecto fuera de producción y PostgreSQL por defecto en producción. Acepta una `DATABASE_URL` o parámetros separados para PostgreSQL y permite habilitar SSL con `DB_SSL=true`. Si recibe un dialecto no soportado, informa el error en vez de continuar con una configuración incorrecta. |
 | `src/models/index.js` | Define los modelos Sequelize y sus tablas. `Role` representa `roles`; `User`, `users`; y `AuditLog`, `unauthorized_access_attempts`, que conserva cada solicitud rechazada por autenticación. También declara la relación entre usuario y rol, utilizada para incluir la información del rol en las respuestas. |
 | `src/routes/peritos.js` | Declara las rutas HTTP y las conecta con los métodos del controlador: crear, listar, consultar por ID y dar de baja. Primero aplica el middleware de API key; después habilita la lectura del JSON y atiende las rutas. |
 | `src/controllers/peritosController.js` | Contiene la lógica de negocio. Valida username y rol al crear, traduce usernames duplicados a `409`, hace la baja lógica actualizando `active`, lista solo usuarios activos y permite filtrar por nombre de rol. Las consultas incluyen el rol asociado. Los errores que no puede resolver se envían al manejador central de Express. |
 | `src/middleware/apiKeyAuth.js` | Protege las rutas comparando `x-api-key` con `API_KEY` mediante una comparación de tiempo constante. Si la clave falta o no coincide, guarda método, ruta, IP, motivo y fecha en la tabla de auditoría y responde `401`. Si no puede guardar la auditoría, propaga el error para informar el fallo. |
 | `test/peritos.test.js` | Prueba el comportamiento de la API usando SQLite en memoria: selección de dialecto, autenticación y auditoría, alta, duplicados, filtro por rol, validaciones y baja lógica. |
-| `package.json` | Declara las dependencias y los comandos disponibles: `npm start` para producción, `npm run dev` para desarrollo con reinicio al detectar cambios y `npm test` para las pruebas. |
+| `package.json` | Declara las dependencias y los comandos disponibles: `npm start` para producción, `npm run dev` para desarrollo con reinicio al detectar cambios, `npm run db:seed` para preparar la base de entrega y `npm test` para las pruebas. |
 | `.env.example` | Muestra las variables de entorno esperadas. Se copia como `.env` para configurar el entorno local; el archivo `.env` no se versiona. |
 | `.gitignore` | Evita incluir en Git dependencias instaladas, archivos de entorno, bases SQLite locales y resultados temporales de pruebas. |
 
